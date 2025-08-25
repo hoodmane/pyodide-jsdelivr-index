@@ -1,0 +1,16 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "jsdelivr-index",
+    "main": "src/worker.py",
+    "compatibility_date": "2025-08-13",
+    "compatibility_flags" : ["python_workers", "python_no_global_handlers"],
+    "observability": {
+      "enabled": true
+    },
+    "kv_namespaces": [
+        {
+          "binding": "index_cache",
+          "id": "8ac643e47f4f42688d0518d58870bd52"
+        }
+    ]
+}
