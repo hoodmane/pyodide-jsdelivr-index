@@ -1,6 +1,6 @@
 {
     "$schema": "node_modules/wrangler/config-schema.json",
-    "name": "jsdelivr-index",
+    "name": "pyodide-jsdelivr-index",
     "main": "src/worker.py",
     "compatibility_date": "2025-08-13",
     "compatibility_flags" : ["python_workers", "python_no_global_handlers"],
