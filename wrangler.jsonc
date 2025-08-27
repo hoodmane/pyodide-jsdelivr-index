@@ -12,5 +12,9 @@
           "binding": "index_cache",
           "id": "8ac643e47f4f42688d0518d58870bd52"
         }
-    ]
+    ],
+    "assets": {
+      "directory": "./assets/",
+      "binding": "ASSETS",
+    }
 }
