@@ -1,7 +1,7 @@
 from workers import Response, WorkerEntrypoint, fetch
 from urllib.parse import urlparse
 from create_index import create_package_index, make_root_index_page
-from js import Headers
+from js import Headers, Array
 
 DIST_TEMPLATE = "https://cdn.jsdelivr.net/pyodide/v{}/full/"
 HEADERS = Headers.new(
@@ -33,9 +33,12 @@ class Default(WorkerEntrypoint):
 
         version = path.split("/", maxsplit=2)[1]
 
-        result = await self.env.index_cache.get(path)
+        result = await self.env.index_cache.get(Array.new(version, path))
         if result:
-            return Response(result, headers=HEADERS)
+            if content := result.get(path, None):
+                return Response(content, headers=HEADERS)
+            if version in result:
+                return Response("Not found", status=404)
 
         dist_url = DIST_TEMPLATE.format(version)
         lock_url = dist_url + "pyodide-lock.json"
@@ -47,4 +50,5 @@ class Default(WorkerEntrypoint):
             if key == path:
                 result = val
             await self.env.index_cache.put(key, val)
+        await self.env.index_cache.put(version, "")
         return Response(result, headers=HEADERS)
