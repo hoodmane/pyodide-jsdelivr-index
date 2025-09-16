@@ -97,7 +97,7 @@ def create_package_index(
     }
 
     # Create top level index
-    packages_str = "\n".join(f'<a href="{x}/">{x}</a>' for x in packages.keys())
+    packages_str = "\n".join(f'<a href="{version}/{x}/">{x}</a>' for x in packages.keys())
 
     result = []
     result.append(
