@@ -35,9 +35,9 @@ class Default(WorkerEntrypoint):
 
         result = await self.env.index_cache.get(Array.new(version, path))
         if result:
-            if content := result.get(path, None):
+            if content := result[path]:
                 return Response(content, headers=HEADERS)
-            if version in result:
+            if result[version] is not None:
                 return Response("Not found", status=404)
 
         dist_url = DIST_TEMPLATE.format(version)
