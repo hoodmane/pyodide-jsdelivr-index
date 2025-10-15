@@ -1,5 +1,6 @@
 from urllib.parse import urlparse
 from textwrap import dedent
+from typing import TypedDict
 
 
 ROOT_INDEX_TEMPLATE = dedent(
@@ -86,9 +87,27 @@ FILE_TEMPLATE = dedent(
 ).strip()
 
 
-def create_package_index(
-    version: str, packages, dist_url: str
-) -> list[tuple[str, str]]:
+class Digests(TypedDict):
+    sha256: str
+
+
+class ReleaseInfo(TypedDict):
+    digests: Digests
+    url: str
+    filename: str
+
+
+class Package(TypedDict):
+    name: str
+    file_name: str
+    sha256: str
+    version: str
+    releases: list[ReleaseInfo]
+
+
+def create_top_level_index(
+    version: str, packages: dict[str, Package]
+) -> tuple[str, str]:
     # We only want to index the wheels
     packages = {
         pkgname: pkginfo
@@ -99,24 +118,25 @@ def create_package_index(
     # Create top level index
     packages_str = "\n".join(f'<a href="{version}/{x}/">{x}</a>' for x in packages.keys())
 
-    result = []
-    result.append(
-        (
-            f"/{version}/index.html",
-            INDEX_TEMPLATE.format(version=version, packages_str=packages_str),
-        )
+    return (
+        f"/{version}/index.html",
+        INDEX_TEMPLATE.format(version=version, packages_str=packages_str),
     )
 
-    for pkgname, pkginfo in packages.items():
-        filename = pkginfo["file_name"]
-        if urlparse(filename).scheme:
-            href = filename
-        else:
-            shasum = pkginfo["sha256"]
-            href = f"{dist_url}{filename}#sha256={shasum}"
-        links_str = f'<a href="{href}">{pkgname}</a>\n'
-        files_html = FILE_TEMPLATE.format(
-            version=version, pkgname=pkgname, links=links_str
-        )
-        result.append((f"/{version}/{pkgname}/index.html", files_html))
-    return result
+def create_package_index(version: str, dist_url, pkginfo: Package) -> tuple[str, str]:
+    filename = pkginfo["file_name"]
+    if urlparse(filename).scheme:
+        href = filename
+    else:
+        shasum = pkginfo["sha256"]
+        href = f"{dist_url}{filename}#sha256={shasum}"
+    links = [f'<a href="{href}">{filename}</a>\n']
+    for release in pkginfo["releases"]:
+        shasum = release["digests"]["sha256"]
+        href = release["url"]
+        links.append(f'<a href="{href}#sha256={shasum}">{release["filename"]}</a>')
+    pkgname = pkginfo["name"]
+    file_html = FILE_TEMPLATE.format(
+        version=version, pkgname=pkgname, links="\n".join(links)
+    )
+    return (f"/{version}/{pkgname}/index.html", file_html)
