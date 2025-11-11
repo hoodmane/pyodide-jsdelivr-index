@@ -1,15 +1,17 @@
 import json
-from workers import Response, WorkerEntrypoint, fetch
+from asyncio import gather
 from urllib.parse import urlparse
+
+from js import Array, Headers
+from workers import Response, WorkerEntrypoint, fetch
+
 from create_index import (
-    make_root_index_page,
     Package,
     ReleaseInfo,
-    create_top_level_index,
     create_package_index,
+    create_top_level_index,
+    make_root_index_page,
 )
-from js import Headers, Array
-from asyncio import gather
 
 DIST_TEMPLATE = "https://cdn.jsdelivr.net/pyodide/v{}/full/"
 HEADERS = Headers.new(

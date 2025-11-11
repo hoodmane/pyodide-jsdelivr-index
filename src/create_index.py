@@ -1,7 +1,6 @@
-from urllib.parse import urlparse
 from textwrap import dedent
 from typing import TypedDict
-
+from urllib.parse import urlparse
 
 ROOT_INDEX_TEMPLATE = dedent(
     """
