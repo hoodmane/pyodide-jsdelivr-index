@@ -2,7 +2,7 @@
     "$schema": "node_modules/wrangler/config-schema.json",
     "name": "pyodide-jsdelivr-index",
     "main": "src/worker.py",
-    "compatibility_date": "2025-08-13",
+    "compatibility_date": "2025-11-10",
     "compatibility_flags" : ["python_workers", "python_no_global_handlers"],
     "observability": {
       "enabled": true
