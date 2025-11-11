@@ -1,0 +1,2 @@
+def patchWaitUntil(arg):
+    pass

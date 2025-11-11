@@ -101,7 +101,7 @@ class Default(WorkerEntrypoint):
         if not pkg_info:
             return Response("Not found", status=404)
 
-        print("... fetching pypi info for", name)
+        print("... Fetching pypi info for", name)
         await fetch_pypi_metadata(pkg_info)
         dist_url = DIST_TEMPLATE.format(version)
         k, v = create_package_index(version, dist_url, pkg_info)
