@@ -8,6 +8,7 @@ from workers import Response, WorkerEntrypoint, fetch
 from create_index import (
     Package,
     ReleaseInfo,
+    canonicalize_name,
     create_package_index,
     create_top_level_index,
     make_root_index_page,
@@ -26,6 +27,7 @@ ROBOTS_TEXT = """\
 User-agent: *
 Allow: /
 """
+
 
 async def fetch_pypi_metadata(pkg: Package) -> ReleaseInfo:
     resp = await fetch(f"https://pypi.org/pypi/{pkg['name']}/json")
@@ -91,9 +93,14 @@ class Default(WorkerEntrypoint):
         version = parts[1]
         name = parts[2]
         print("version", version, "name", name)
+        canonicalized_name = canonicalize_name(name)
 
-        result = await self.env.index_cache.get(Array.new(version, path))
-        if content := result[path]:
+        if name == "index.html":
+            new_path = path
+        else:
+            new_path = f"/{version}/{canonicalized_name}/index.html"
+        result = await self.env.index_cache.get(Array.new(version, new_path))
+        if content := result[new_path]:
             print("... Found result in cache")
             return Response(content, headers=HEADERS)
         pkg_infos: dict[str, Package]
@@ -108,7 +115,7 @@ class Default(WorkerEntrypoint):
                 # Return top level index
                 return Response(v, headers=HEADERS)
 
-        pkg_info = pkg_infos.get(name)
+        pkg_info = pkg_infos.get(canonicalized_name)
         if not pkg_info:
             return Response("Not found", status=404)
 

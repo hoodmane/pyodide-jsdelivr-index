@@ -1,6 +1,15 @@
+import re
 from textwrap import dedent
 from typing import TypedDict
 from urllib.parse import urlparse
+
+_canonicalize_regex = re.compile(r"[-_.]+")
+
+
+def canonicalize_name(name: str) -> str:
+    # This is taken from PEP 503.
+    return _canonicalize_regex.sub("-", name).lower()
+
 
 ROOT_INDEX_TEMPLATE = dedent(
     """
@@ -137,7 +146,7 @@ def create_package_index(version: str, dist_url, pkginfo: Package) -> tuple[str,
         shasum = release["digests"]["sha256"]
         href = release["url"]
         links.append(f'<a href="{href}#sha256={shasum}">{release["filename"]}</a>')
-    pkgname = pkginfo["name"]
+    pkgname = canonicalize_name(pkginfo["name"])
     file_html = FILE_TEMPLATE.format(
         version=version, pkgname=pkgname, links="\n".join(links)
     )
