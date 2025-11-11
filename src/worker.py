@@ -1,7 +1,13 @@
 import json
 from workers import Response, WorkerEntrypoint, fetch
 from urllib.parse import urlparse
-from create_index import make_root_index_page, Package, ReleaseInfo, create_top_level_index, create_package_index
+from create_index import (
+    make_root_index_page,
+    Package,
+    ReleaseInfo,
+    create_top_level_index,
+    create_package_index,
+)
 from js import Headers, Array
 from asyncio import gather
 
@@ -14,8 +20,9 @@ HEADERS = Headers.new(
     ]
 )
 
+
 async def fetch_pypi_metadata(pkg: Package) -> ReleaseInfo:
-    resp = await fetch(f"https://pypi.org/pypi/{pkg["name"]}/json")
+    resp = await fetch(f"https://pypi.org/pypi/{pkg['name']}/json")
     if resp.status >= 400:
         pkg["releases"] = []
         return
@@ -31,6 +38,7 @@ async def fetch_pypi_metadata(pkg: Package) -> ReleaseInfo:
 async def fetch_pypi_metadatas(pkgs: list[Package]) -> dict[str, ReleaseInfo]:
     await gather(*(fetch_pypi_metadata(pkg) for pkg in pkgs))
 
+
 async def fetch_package_info(version) -> dict[str, Package]:
     dist_url = DIST_TEMPLATE.format(version)
     lock_url = dist_url + "pyodide-lock.json"
@@ -41,12 +49,13 @@ async def fetch_package_info(version) -> dict[str, Package]:
 
 
 class Default(WorkerEntrypoint):
-    async def cache_package_infos(self, version: str, pkg_infos: dict[str, Package]) -> str:
+    async def cache_package_infos(
+        self, version: str, pkg_infos: dict[str, Package]
+    ) -> str:
         await self.env.index_cache.put(version, json.dumps(pkg_infos))
         k, v = create_top_level_index(version, pkg_infos)
         await self.env.index_cache.put(k, v)
         return v
-
 
     async def fetch(self, request):
         path = urlparse(request.url).path

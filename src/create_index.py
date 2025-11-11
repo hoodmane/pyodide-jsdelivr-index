@@ -116,12 +116,15 @@ def create_top_level_index(
     }
 
     # Create top level index
-    packages_str = "\n".join(f'<a href="{version}/{x}/">{x}</a>' for x in packages.keys())
+    packages_str = "\n".join(
+        f'<a href="{version}/{x}/">{x}</a>' for x in packages.keys()
+    )
 
     return (
         f"/{version}/index.html",
         INDEX_TEMPLATE.format(version=version, packages_str=packages_str),
     )
+
 
 def create_package_index(version: str, dist_url, pkginfo: Package) -> tuple[str, str]:
     filename = pkginfo["file_name"]
