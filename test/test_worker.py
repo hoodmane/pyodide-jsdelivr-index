@@ -32,21 +32,30 @@ class Env:
 from worker import Default
 
 AFFINE_JSDELIVR_INFO = {
-    "depends": [],
     "file_name": "affine-2.4.0-py3-none-any.whl",
-    "imports": ["affine"],
     "install_dir": "site",
     "name": "affine",
     "package_type": "package",
     "sha256": "1d4c8070a40853fc28819af0821ee25d42979718165e0d4255d3063d9b11d1d4",
-    "unvendored_tests": True,
     "version": "2.4.0",
 }
 
+PYDANTIC_CORE_JSDELIVR_INFO = {
+    "file_name": "pydantic_core-2.27.2-cp313-cp313-pyodide_2025_0_wasm32.whl",
+    "install_dir": "site",
+    "name": "pydantic_core",
+    "package_type": "package",
+    "sha256": "3695112ef99b222e48e0a2837b055ec818b43ff5e2e0802e99f5d6d2dd36af7b",
+    "version": "2.27.2",
+}
+
+
 @pytest.fixture
 def package_json(httpx_mock: HTTPXMock):
-
-    packages = {"affine": AFFINE_JSDELIVR_INFO}
+    packages = {
+        "affine": AFFINE_JSDELIVR_INFO,
+        "pydantic-core": PYDANTIC_CORE_JSDELIVR_INFO,
+    }
     json = {"packages": packages}
     httpx_mock.add_response(
         method="GET",
@@ -77,7 +86,6 @@ async def test_root(httpx_mock: HTTPXMock, url: str):
         assert link["href"] == ver
 
 
-
 @pytest.mark.parametrize("url", ["/0.28.3", "/0.28.3/index.html"])
 @pytest.mark.asyncio
 async def test_version_index(package_json, url: str, capsys):
@@ -87,7 +95,7 @@ async def test_version_index(package_json, url: str, capsys):
     assert list(worker.env.index_cache.data.keys()) == ["0.28.3", "/0.28.3/index.html"]
     parsed = BeautifulSoup(result.body, "html.parser")
     all_links = parsed.find_all("a")
-    assert len(all_links) == 1
+    assert len(all_links) == 2
     res = all_links[0]
     assert res.text == "affine"
     assert res["href"] == "0.28.3/affine/"
@@ -147,7 +155,10 @@ async def test_package_info(package_json, httpx_mock: HTTPXMock, capsys):
     assert len(all_links) == 3
     jsdelivr_link = all_links[0]
     assert jsdelivr_link.text == "affine-2.4.0-py3-none-any.whl"
-    assert jsdelivr_link["href"] == f"https://cdn.jsdelivr.net/pyodide/v0.28.3/full/{AFFINE_JSDELIVR_INFO['file_name']}#sha256={AFFINE_JSDELIVR_INFO['sha256']}"
+    assert (
+        jsdelivr_link["href"]
+        == f"https://cdn.jsdelivr.net/pyodide/v0.28.3/full/{AFFINE_JSDELIVR_INFO['file_name']}#sha256={AFFINE_JSDELIVR_INFO['sha256']}"
+    )
 
     pypi_wheel_link = all_links[1]
     assert pypi_wheel_link.text == "affine-2.4.0-py3-none-any.whl"
@@ -160,7 +171,7 @@ async def test_package_info(package_json, httpx_mock: HTTPXMock, capsys):
     assert "Fetching lock info" in io.out
     assert "Fetching pypi info for affine" in io.out
     assert "Found result in cache" not in io.out
-    
+
     # Test we hit cache on the second request
     result2 = await worker.fetch(Request("/0.28.3/affine"))
     assert result2.body == result.body
@@ -172,9 +183,7 @@ async def test_package_info(package_json, httpx_mock: HTTPXMock, capsys):
 
 @pytest.mark.asyncio
 async def test_package_info_no_pypi_release(package_json, httpx_mock: HTTPXMock):
-    json = {
-        "releases": {}
-    }
+    json = {"releases": {}}
     httpx_mock.add_response(
         method="GET", url="https://pypi.org/pypi/affine/json", json=json
     )
@@ -183,3 +192,67 @@ async def test_package_info_no_pypi_release(package_json, httpx_mock: HTTPXMock)
     parsed = BeautifulSoup(result.body, "html.parser")
     all_links = parsed.find_all("a")
     assert len(all_links) == 1
+
+
+@pytest.mark.asyncio
+async def test_canonicalize_package_name1(package_json, httpx_mock: HTTPXMock, capsys):
+    json = {"releases": {}}
+    httpx_mock.add_response(
+        method="GET", url="https://pypi.org/pypi/pydantic_core/json", json=json
+    )
+    worker = Default(Ctx, Env())
+    result = await worker.fetch(Request("/0.28.3/pydantic-core"))
+    parsed = BeautifulSoup(result.body, "html.parser")
+    all_links = parsed.find_all("a")
+    assert len(all_links) == 1
+
+    io = capsys.readouterr()
+    assert "Fetching lock info" in io.out
+    assert "Fetching pypi info for pydantic-core" in io.out
+    assert "Found result in cache" not in io.out
+    assert list(worker.env.index_cache.data.keys()) == [
+        "0.28.3",
+        "/0.28.3/index.html",
+        "/0.28.3/pydantic-core/index.html",
+    ]
+
+    result = await worker.fetch(Request("/0.28.3/pydantic_core"))
+    io = capsys.readouterr()
+    parsed = BeautifulSoup(result.body, "html.parser")
+    all_links = parsed.find_all("a")
+    assert len(all_links) == 1
+    assert "Fetching lock info" not in io.out
+    assert "Fetching pypi info for pydantic-core" not in io.out
+    assert "Found result in cache" in io.out
+
+
+@pytest.mark.asyncio
+async def test_canonicalize_package_name2(package_json, httpx_mock: HTTPXMock, capsys):
+    json = {"releases": {}}
+    httpx_mock.add_response(
+        method="GET", url="https://pypi.org/pypi/pydantic_core/json", json=json
+    )
+    worker = Default(Ctx, Env())
+    result = await worker.fetch(Request("/0.28.3/pydantic_core"))
+    parsed = BeautifulSoup(result.body, "html.parser")
+    all_links = parsed.find_all("a")
+    assert len(all_links) == 1
+
+    io = capsys.readouterr()
+    assert "Fetching lock info" in io.out
+    assert "Fetching pypi info for pydantic_core" in io.out
+    assert "Found result in cache" not in io.out
+    assert list(worker.env.index_cache.data.keys()) == [
+        "0.28.3",
+        "/0.28.3/index.html",
+        "/0.28.3/pydantic-core/index.html",
+    ]
+
+    result = await worker.fetch(Request("/0.28.3/pydantic-core"))
+    io = capsys.readouterr()
+    parsed = BeautifulSoup(result.body, "html.parser")
+    all_links = parsed.find_all("a")
+    assert len(all_links) == 1
+    assert "Fetching lock info" not in io.out
+    assert "Fetching pypi info for pydantic-core" not in io.out
+    assert "Found result in cache" in io.out

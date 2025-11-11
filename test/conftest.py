@@ -51,4 +51,3 @@ async def pyfetch(url: str, /, *, fetcher=None):
 
 
 _workers._pyfetch_patched = pyfetch
-
