@@ -22,6 +22,10 @@ HEADERS = Headers.new(
     ]
 )
 
+ROBOTS_TEXT = """\
+User-agent: *
+Allow: /
+"""
 
 async def fetch_pypi_metadata(pkg: Package) -> ReleaseInfo:
     resp = await fetch(f"https://pypi.org/pypi/{pkg['name']}/json")
@@ -61,10 +65,17 @@ class Default(WorkerEntrypoint):
 
     async def fetch(self, request):
         path = urlparse(request.url).path
-        if path.startswith("/assets"):
+        if path.startswith("/assets/"):
             return await self.env._env.ASSETS.fetch(
-                "http://fakehost.invalid/" + path.removeprefix("/assets")
+                "http://fakehost.invalid/" + path.removeprefix("/assets/")
             )
+
+        if path == "/robots.txt":
+            return Response(ROBOTS_TEXT, headers=[("content-type", "text/plain")])
+
+        if path.startswith("/simple-index/"):
+            path = path.removeprefix("/simple-index/")
+
         if not path.endswith("/index.html") and not path.endswith("/"):
             path += "/"
         if path.endswith("/"):
