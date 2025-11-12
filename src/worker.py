@@ -1,5 +1,6 @@
 import json
 from asyncio import gather
+from functools import cache
 from urllib.parse import urlparse
 
 from js import Array, Headers
@@ -15,13 +16,16 @@ from create_index import (
 )
 
 DIST_TEMPLATE = "https://cdn.jsdelivr.net/pyodide/v{}/full/"
-HEADERS = Headers.new(
-    [
-        ("access-control-allow-origin", "*"),
-        ("access-control-expose-headers", "*"),
-        ("content-type", "text/html"),
-    ]
-)
+
+@cache
+def get_headers():
+    return Headers.new(
+        [
+            ("access-control-allow-origin", "*"),
+            ("access-control-expose-headers", "*"),
+            ("content-type", "text/html"),
+        ]
+    )
 
 ROBOTS_TEXT = """\
 User-agent: *
@@ -87,7 +91,7 @@ class Default(WorkerEntrypoint):
             resp.raise_for_status()
             version_json = await resp.json()
             html = make_root_index_page(version_json)
-            return Response(html, headers=HEADERS)
+            return Response(html, headers=get_headers())
 
         parts = path.split("/", maxsplit=3)
         version = parts[1]
@@ -102,7 +106,7 @@ class Default(WorkerEntrypoint):
         result = await self.env.index_cache.get(Array.new(version, new_path))
         if content := result[new_path]:
             print("... Found result in cache")
-            return Response(content, headers=HEADERS)
+            return Response(content, headers=get_headers())
         pkg_infos: dict[str, Package]
         if result[version]:
             print("... Found lock info in cache")
@@ -113,7 +117,7 @@ class Default(WorkerEntrypoint):
             v = await self.cache_package_infos(version, pkg_infos)
             if name == "index.html":
                 # Return top level index
-                return Response(v, headers=HEADERS)
+                return Response(v, headers=get_headers())
 
         pkg_info = pkg_infos.get(canonicalized_name)
         if not pkg_info:
@@ -124,4 +128,4 @@ class Default(WorkerEntrypoint):
         dist_url = DIST_TEMPLATE.format(version)
         k, v = create_package_index(version, dist_url, pkg_info)
         await self.env.index_cache.put(k, v)
-        return Response(v, headers=HEADERS)
+        return Response(v, headers=get_headers())
